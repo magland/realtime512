@@ -15,7 +15,7 @@ from .api_handlers import (
     get_preview_file_handler,
 )
 
-def run_serve(host="127.0.0.1", port=5000):
+def run_serve(host="0.0.0.0", port=5000):
     """Main entry point for realtime512 serve."""
     # Check if we're in an experiment directory
     config_path = os.path.join(os.getcwd(), "realtime512.yaml")
