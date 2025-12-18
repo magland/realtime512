@@ -137,12 +137,6 @@ export function FileExplorerView() {
                       />
                       <Chip
                         size="small"
-                        label="Templates"
-                        color={file.has_templates ? 'success' : 'default'}
-                        icon={file.has_templates ? <CheckIcon /> : <ErrorIcon />}
-                      />
-                      <Chip
-                        size="small"
                         label="High Activity"
                         color={file.has_high_activity ? 'success' : 'default'}
                         icon={file.has_high_activity ? <CheckIcon /> : <ErrorIcon />}

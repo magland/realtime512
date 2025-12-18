@@ -55,7 +55,7 @@ export function OverviewView() {
   const files = filesData?.files || [];
   const totalFiles = files.length;
   const processedFiles = files.filter(
-    (f) => f.has_filt && f.has_shifted && f.has_templates
+    (f) => f.has_filt && f.has_shifted && f.has_coarse_sorting
   ).length;
   const totalDuration = files.reduce((sum, f) => sum + (f.duration_sec || 0), 0);
 

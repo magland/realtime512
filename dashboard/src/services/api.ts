@@ -102,16 +102,6 @@ class RealtimeAPI {
       endSec: actualEndSec,
     };
   }
-
-  async getTemplates(filename: string): Promise<ArrayBuffer> {
-    const response = await axios.get(
-      `${this.baseURL}/templates/${filename}`,
-      {
-        responseType: 'arraybuffer',
-      }
-    );
-    return response.data;
-  }
 }
 
 // Initialize API with custom URL from query parameter if provided, otherwise use default

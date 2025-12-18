@@ -52,7 +52,7 @@ npm install
 
 ### File Explorer Tab
 - Browse all .bin files being processed
-- Check processing status (filtered, shifted, templates, etc.)
+- Check processing status (filtered, shifted, etc.)
 - View file metadata (duration, size, frames)
 
 ### Time Series Tab

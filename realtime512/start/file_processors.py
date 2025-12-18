@@ -8,7 +8,6 @@ from ..helpers.time_shifts import optimize_time_shift, apply_time_shifts
 from ..helpers.high_activity_intervals import detect_high_activity_intervals
 from ..helpers.channel_spike_stats import compute_channel_spike_stats, detect_spikes_single_channel
 from ..helpers.data_utils import set_high_activity_to_zero
-from ..helpers.template_computation import compute_templates_from_frames
 from ..helpers.generate_preview import generate_preview
 from ..helpers.coarse_sorting import compute_coarse_sorting
 
@@ -242,57 +241,6 @@ def process_coarse_sorting(bin_files, computed_dir, n_channels, sampling_frequen
         np.save(spike_amplitudes_path, spike_amplitudes)
         
         print(f"  Saved {len(spike_times)} spikes with {len(templates)} templates")
-        return True
-    return False
-
-def process_templates(bin_files, computed_dir, n_channels, sampling_frequency, electrode_coords):
-    """Compute templates for filtered files."""
-    for fname in bin_files:
-        shift_path = os.path.join(computed_dir, "shifted", fname + ".shifted")
-        high_activity_path = os.path.join(computed_dir, "high_activity", fname + ".high_activity.json")
-        if not os.path.exists(os.path.join(computed_dir, "templates")):
-            os.makedirs(os.path.join(computed_dir, "templates"))
-        templates_path = os.path.join(computed_dir, "templates", fname + ".templates.npy")
-        if os.path.exists(templates_path):
-            continue  # Already processed
-        if not os.path.exists(shift_path):
-            continue  # Shifted file does not exist yet
-        if not os.path.exists(high_activity_path):
-            continue  # High activity intervals do not exist yet
-        print(f"Computing templates: {fname}.templates.npy")
-        shift_data = np.fromfile(shift_path, dtype=np.int16).reshape(-1, n_channels)
-        with open(high_activity_path, "r") as f:
-            high_activity_data = json.load(f)
-        high_activity_intervals = [
-            (item['start_sec'], item['end_sec']) for item in high_activity_data['high_activity_intervals']
-        ]
-        shifted_data_low_activity = set_high_activity_to_zero(
-            data=shift_data,
-            sampling_frequency_hz=sampling_frequency,
-            high_activity_intervals=high_activity_intervals,
-            start_frame=0,
-            end_frame=shift_data.shape[0]
-        )
-        data_min = np.min(shifted_data_low_activity, axis=1)
-        detect_threshold = -80
-        num_nearest_neighbors = 20
-        num_clusters = 100
-        spike_inds = detect_spikes_single_channel(
-            data=data_min,
-            threshold=detect_threshold,
-            sign=-1,
-            window_size=10
-        )
-        frames = shifted_data_low_activity[spike_inds, :].astype(np.float32)
-        
-        print(f'Computing templates from {frames.shape[0]} frames...')
-        templates = compute_templates_from_frames(
-            frames,
-            num_nearest_neighbors=num_nearest_neighbors,
-            num_clusters=num_clusters,
-            electrode_coords=electrode_coords
-        )
-        np.save(templates_path, templates)
         return True
     return False
 
