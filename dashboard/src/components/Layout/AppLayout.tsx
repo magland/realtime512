@@ -15,6 +15,7 @@ import {
 import {
   Dashboard as DashboardIcon,
   Folder as FolderIcon,
+  Star as StarIcon,
 } from '@mui/icons-material';
 import { navigateWithQuery } from '../../utils/navigation';
 
@@ -36,6 +37,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: <DashboardIcon />, path: '/' },
     { id: 'files', label: 'File Explorer', icon: <FolderIcon />, path: '/files' },
+    { id: 'focus-units', label: 'Focus Units', icon: <StarIcon />, path: '/focus-units' },
   ];
 
   const isCurrentView = (path: string) => {

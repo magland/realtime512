@@ -2,6 +2,7 @@
 import React, { FunctionComponent, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import FPMEAMovie from "./views/MEAMovie/FPMEAMovie";
+import FPMEASpikeFramesMovie from "./views/MEASpikeFramesMovie/FPMEASpikeFramesMovie";
 import {
   FPViewComponent,
   FPViewContext,
@@ -98,6 +99,11 @@ const registerExtension = () => {
   registerFPViewComponent({
     name: "realtime512.MEAMovie",
     render: makeRenderFunction(FPMEAMovie),
+  });
+
+  registerFPViewComponent({
+    name: "realtime512.MEASpikeFramesMovie",
+    render: makeRenderFunction(FPMEASpikeFramesMovie),
   });
 
   registerFPViewComponent({

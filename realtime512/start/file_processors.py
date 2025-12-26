@@ -10,6 +10,7 @@ from ..helpers.channel_spike_stats import compute_channel_spike_stats, detect_sp
 from ..helpers.data_utils import set_high_activity_to_zero
 from ..helpers.generate_preview import generate_preview
 from ..helpers.coarse_sorting import compute_coarse_sorting
+from ..helpers.unit_matching import compute_unit_matches, calculate_spike_labels_hash
 
 def process_filtering(bin_files, raw_dir, computed_dir, n_channels, filter_params, sampling_frequency):
     """Apply bandpass filtering to raw .bin files."""
@@ -244,13 +245,174 @@ def process_coarse_sorting(bin_files, computed_dir, n_channels, sampling_frequen
         return True
     return False
 
+def process_unit_matching(bin_files, computed_dir, n_channels, sampling_frequency):
+    """
+    Match units in each file X against files Y that have focus units.
+    
+    This function:
+    1. Loads focus units from focus_units.json
+    2. For each file X with coarse sorting, matches against all Y files with focus units
+    3. Stores match results in computed/unit_matching/{filename_x}/{filename_y}/
+    4. Validates hashes and deletes invalid match results
+    """
+    # Load focus units
+    focus_units_path = os.path.join(os.getcwd(), "focus_units.json")
+    if not os.path.exists(focus_units_path):
+        return False  # No focus units defined yet
+    
+    with open(focus_units_path, "r") as f:
+        focus_units_data = json.load(f)
+    
+    focus_units = focus_units_data.get("focus_units", [])
+    if len(focus_units) == 0:
+        return False  # No focus units defined
+    
+    # Get unique Y filenames that have focus units
+    y_filenames = list(set(unit["bin_filename"] for unit in focus_units))
+    
+    something_processed = False
+    
+    # Process each file X
+    for fname_x in bin_files:
+        coarse_sorting_dir_x = os.path.join(computed_dir, "coarse_sorting", fname_x)
+        spike_labels_path_x = os.path.join(coarse_sorting_dir_x, "spike_labels.npy")
+        spike_times_path_x = os.path.join(coarse_sorting_dir_x, "spike_times.npy")
+        shifted_path_x = os.path.join(computed_dir, "shifted", fname_x + ".shifted")
+        
+        # Skip if X doesn't have coarse sorting
+        if not os.path.exists(spike_labels_path_x):
+            continue
+        
+        # Calculate current hash for X
+        current_hash_x = calculate_spike_labels_hash(spike_labels_path_x)
+        if current_hash_x is None:
+            continue
+        
+        # Match against each Y file
+        for fname_y in y_filenames:
+            # Skip matching X against itself
+            if fname_x == fname_y:
+                continue
+            
+            coarse_sorting_dir_y = os.path.join(computed_dir, "coarse_sorting", fname_y)
+            spike_labels_path_y = os.path.join(coarse_sorting_dir_y, "spike_labels.npy")
+            spike_times_path_y = os.path.join(coarse_sorting_dir_y, "spike_times.npy")
+            shifted_path_y = os.path.join(computed_dir, "shifted", fname_y + ".shifted")
+            
+            # Skip if Y doesn't have coarse sorting
+            if not os.path.exists(spike_labels_path_y):
+                continue
+            
+            # Calculate current hash for Y
+            current_hash_y = calculate_spike_labels_hash(spike_labels_path_y)
+            if current_hash_y is None:
+                continue
+            
+            # Create output directory for this X-Y pair
+            unit_matching_dir = os.path.join(computed_dir, "unit_matching", fname_x, fname_y)
+            if not os.path.exists(unit_matching_dir):
+                os.makedirs(unit_matching_dir)
+            
+            # Check if matching already exists and is valid
+            metadata_path = os.path.join(unit_matching_dir, "metadata.json")
+            mutual_matches_path = os.path.join(unit_matching_dir, "mutual_matches.json")
+            event_matches_x_to_y_path = os.path.join(unit_matching_dir, "event_matches_x_to_y.npy")
+            event_matches_y_to_x_path = os.path.join(unit_matching_dir, "event_matches_y_to_x.npy")
+            
+            need_recompute = False
+            
+            if os.path.exists(metadata_path):
+                # Check if hashes match
+                with open(metadata_path, "r") as f:
+                    metadata = json.load(f)
+                
+                stored_hash_x = metadata.get("spike_labels_hash_x")
+                stored_hash_y = metadata.get("spike_labels_hash_y")
+                
+                if stored_hash_x != current_hash_x or stored_hash_y != current_hash_y:
+                    # Hashes changed, need to recompute and delete old results
+                    print(f"Hash mismatch for {fname_x} <-> {fname_y}, deleting old match results")
+                    if os.path.exists(mutual_matches_path):
+                        os.remove(mutual_matches_path)
+                    if os.path.exists(event_matches_x_to_y_path):
+                        os.remove(event_matches_x_to_y_path)
+                    if os.path.exists(event_matches_y_to_x_path):
+                        os.remove(event_matches_y_to_x_path)
+                    os.remove(metadata_path)
+                    need_recompute = True
+                else:
+                    # Hashes match, check if all files exist
+                    if (os.path.exists(mutual_matches_path) and 
+                        os.path.exists(event_matches_x_to_y_path) and 
+                        os.path.exists(event_matches_y_to_x_path)):
+                        continue  # Already processed and valid
+                    else:
+                        need_recompute = True
+            else:
+                need_recompute = True
+            
+            if not need_recompute:
+                continue
+            
+            # Need to compute matching
+            print(f"Computing unit matching: {fname_x} <-> {fname_y}")
+            
+            # Load spike data for X
+            spike_labels_x = np.load(spike_labels_path_x)
+            spike_times_x = np.load(spike_times_path_x)
+            shifted_data_x = np.fromfile(shifted_path_x, dtype=np.int16).reshape(-1, n_channels)
+            
+            # Convert spike times to frame indices
+            spike_frames_x = (spike_times_x * sampling_frequency).astype(np.int64)
+            frames_x = shifted_data_x[spike_frames_x, :].astype(np.float32)
+            
+            # Load spike data for Y
+            spike_labels_y = np.load(spike_labels_path_y)
+            spike_times_y = np.load(spike_times_path_y)
+            shifted_data_y = np.fromfile(shifted_path_y, dtype=np.int16).reshape(-1, n_channels)
+            
+            # Convert spike times to frame indices
+            spike_frames_y = (spike_times_y * sampling_frequency).astype(np.int64)
+            frames_y = shifted_data_y[spike_frames_y, :].astype(np.float32)
+            
+            # Compute matches
+            match_results = compute_unit_matches(
+                frames_x=frames_x,
+                labels_x=spike_labels_x,
+                frames_y=frames_y,
+                labels_y=spike_labels_y,
+                n_neighbors=10
+            )
+            
+            # Save results
+            with open(mutual_matches_path, "w") as f:
+                json.dump(match_results["mutual_matches"], f, indent=2)
+            
+            np.save(event_matches_x_to_y_path, match_results["event_matches_x_to_y"])
+            np.save(event_matches_y_to_x_path, match_results["event_matches_y_to_x"])
+            
+            # Save metadata with hashes
+            metadata = {
+                "filename_x": fname_x,
+                "filename_y": fname_y,
+                "spike_labels_hash_x": current_hash_x,
+                "spike_labels_hash_y": current_hash_y,
+                "num_mutual_matches": len(match_results["mutual_matches"])
+            }
+            with open(metadata_path, "w") as f:
+                json.dump(metadata, f, indent=2)
+            
+            print(f"  Found {len(match_results['mutual_matches'])} mutual matches")
+            something_processed = True
+    
+    return something_processed
+
 def process_preview(bin_files, computed_dir, n_channels, sampling_frequency, electrode_coords):
     for fname in bin_files:
         filt_path = os.path.join(computed_dir, "filt", fname + ".filt")
         shift_path = os.path.join(computed_dir, "shifted", fname + ".shifted")
         high_activity_intervals_path = os.path.join(computed_dir, "high_activity", fname + ".high_activity.json")
         stats_path = os.path.join(computed_dir, "stats", fname + ".stats.json")
-        templates_path = os.path.join(computed_dir, "templates", fname + ".templates.npy")
         coarse_sorting_path = os.path.join(computed_dir, "coarse_sorting", fname)
         if not os.path.exists(os.path.join(computed_dir, "preview")):
             os.makedirs(os.path.join(computed_dir, "preview"))
@@ -265,10 +427,9 @@ def process_preview(bin_files, computed_dir, n_channels, sampling_frequency, ele
             continue  # High activity intervals do not exist yet
         if not os.path.exists(stats_path):
             continue  # Stats file does not exist yet
-        if not os.path.exists(templates_path):
-            continue  # Templates file does not exist yet
         if not os.path.exists(coarse_sorting_path):
             continue  # Coarse sorting does not exist yet
+
         with open(high_activity_intervals_path, "r") as f:
             high_activity_data = json.load(f)
         high_activity_intervals = [

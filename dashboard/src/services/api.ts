@@ -7,6 +7,9 @@ import type {
   StatsResponse,
   BinaryDataResponse,
   DataType,
+  FocusUnitsResponse,
+  CoarseSortingUnitsResponse,
+  SpikeTrainResponse,
 } from '../types';
 
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -101,6 +104,39 @@ class RealtimeAPI {
       startSec: actualStartSec,
       endSec: actualEndSec,
     };
+  }
+
+  async getFocusUnits(): Promise<FocusUnitsResponse> {
+    const response = await axios.get<FocusUnitsResponse>(
+      `${this.baseURL}/focus_units`
+    );
+    return response.data;
+  }
+
+  async addFocusUnits(units: { bin_filename: string; unit_id: number }[]): Promise<void> {
+    await axios.post(`${this.baseURL}/focus_units`, { units });
+  }
+
+  async updateFocusUnit(focusUnitId: string, notes: string): Promise<void> {
+    await axios.put(`${this.baseURL}/focus_units/${focusUnitId}`, { notes });
+  }
+
+  async deleteFocusUnit(focusUnitId: string): Promise<void> {
+    await axios.delete(`${this.baseURL}/focus_units/${focusUnitId}`);
+  }
+
+  async getCoarseSortingUnits(filename: string): Promise<CoarseSortingUnitsResponse> {
+    const response = await axios.get<CoarseSortingUnitsResponse>(
+      `${this.baseURL}/coarse_sorting_units/${filename}`
+    );
+    return response.data;
+  }
+
+  async getSpikeTrainForFocusUnit(focusUnitId: string): Promise<SpikeTrainResponse> {
+    const response = await axios.get<SpikeTrainResponse>(
+      `${this.baseURL}/focus_units/${focusUnitId}/spike_train`
+    );
+    return response.data;
   }
 }
 

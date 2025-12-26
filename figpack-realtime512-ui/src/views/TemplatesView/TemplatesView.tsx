@@ -48,13 +48,12 @@ const TemplatesView: React.FC<Props> = ({ width, height, zarrGroup }) => {
 
   const selectUnitId = useCallback(
     (unitId: string) => {
-      console.log('--- a', unitId, selectedUnitIds);
       unitSelectionDispatch({
         type: "SET_SELECTION",
         incomingSelectedUnitIds: [unitId]
       });
     },
-    [unitSelectionDispatch, selectedUnitIds]
+    [unitSelectionDispatch]
   );
 
   const toggleSelectUnitId = useCallback(

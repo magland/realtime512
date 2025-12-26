@@ -7,6 +7,7 @@ import figpack.views as vv
 import figpack_spike_sorting.views as ssv
 
 from ..figpack_realtime512.MEAMovie import MEAMovie
+from ..figpack_realtime512.MEASpikeFramesMovie import MEASpikeFramesMovie
 from ..figpack_realtime512.MEAFiringRatesAndAmplitudes import MEAFiringRatesAndAmplitudes
 from ..figpack_realtime512.TemplatesView import TemplatesView
 from ..figpack_realtime512.ClusterSeparationView import ClusterSeparationView, ClusterSeparationViewItem
@@ -67,7 +68,7 @@ def generate_preview(
             content="Templates file not found."
         )
     
-    # Autocorrelograms and Cluster Separation
+    # Autocorrelograms, Cluster Separation, and Spike Frames Movie
     spike_times_path = coarse_sorting_path + "/spike_times.npy"
     spike_labels_path = coarse_sorting_path + "/spike_labels.npy"
     if os.path.exists(spike_times_path) and os.path.exists(spike_labels_path):
@@ -78,7 +79,7 @@ def generate_preview(
             spike_labels=spike_labels
         )
         
-        # Create cluster separation view
+        # Create cluster separation view and spike frames movie
         if os.path.exists(templates_path) and os.path.exists(shift_path):
             print('Creating cluster separation view...')
             shifted_data = np.fromfile(shift_path, dtype=np.int16).reshape(-1, n_channels)
@@ -90,15 +91,31 @@ def generate_preview(
                 sampling_frequency=sampling_frequency,
                 num_neighbors=10
             )
+            
+            # Create spike frames movie
+            print('Creating spike frames movie...')
+            spike_frames_movie = create_spike_frames_movie(
+                shifted_data=shifted_data,
+                spike_times=spike_times,
+                spike_labels=spike_labels,
+                electrode_coords=electrode_coords,
+                sampling_frequency=sampling_frequency
+            )
         else:
             cluster_separation_view = vv.Markdown(
                 content="Templates or shifted data not found."
+            )
+            spike_frames_movie = vv.Markdown(
+                content="Shifted data not found."
             )
     else:
         autocorrelograms_view = vv.Markdown(
             content="Spike times or labels file not found."
         )
         cluster_separation_view = vv.Markdown(
+            content="Spike times or labels file not found."
+        )
+        spike_frames_movie = vv.Markdown(
             content="Spike times or labels file not found."
         )
 
@@ -121,6 +138,10 @@ def generate_preview(
         vv.TabLayoutItem(
             view=autocorrelograms_view,
             label="Coarse Autocorrelograms"
+        ),
+        vv.TabLayoutItem(
+            view=spike_frames_movie,
+            label="Spike Frames"
         ),
         vv.TabLayoutItem(
             view=filt_movie,
@@ -262,7 +283,7 @@ def create_autocorrelograms_view(
         bin_edges_sec, bin_counts = compute_unit_autocorrelogram(
             spike_train_sec,
             bin_size_ms=1,
-            window_ms=20
+            window_ms=100
         )
         autocorrelogram = ssv.AutocorrelogramItem(
             unit_id=str(unit_id),
@@ -319,6 +340,66 @@ def compute_unit_autocorrelogram(spike_train, bin_size_ms=1.0, window_ms=100.0):
             bin_counts[num_bins_half - 1 - i] += ct
         offset = offset + 1
     return (bin_edges_msec / 1000).astype(np.float32), bin_counts
+
+def create_spike_frames_movie(
+    *,
+    shifted_data: np.ndarray,
+    spike_times: np.ndarray,
+    spike_labels: np.ndarray,
+    electrode_coords: np.ndarray,
+    sampling_frequency: float
+):
+    """
+    Create a spike frames movie view showing only frames that contain spikes.
+    
+    Parameters
+    ----------
+    shifted_data : np.ndarray
+        Shifted data array of shape (num_frames, num_channels)
+    spike_times : np.ndarray
+        Spike times in seconds
+    spike_labels : np.ndarray
+        Spike labels (1-based unit IDs)
+    electrode_coords : np.ndarray
+        Electrode coordinates array of shape (num_channels, 2)
+    sampling_frequency : float
+        Sampling frequency in Hz
+    
+    Returns
+    -------
+    MEASpikeFramesMovie
+    """
+    # Convert spike times to frame indices
+    spike_frame_indices = (spike_times * sampling_frequency).astype(int)
+    
+    # Filter out invalid frame indices
+    valid_mask = (spike_frame_indices >= 0) & (spike_frame_indices < shifted_data.shape[0])
+    spike_frame_indices = spike_frame_indices[valid_mask]
+    spike_times_valid = spike_times[valid_mask]
+    spike_labels_valid = spike_labels[valid_mask]
+    
+    if len(spike_frame_indices) == 0:
+        # Return empty view
+        return MEASpikeFramesMovie(
+            spike_frames_data=np.zeros((0, shifted_data.shape[1]), dtype=np.int16),
+            electrode_coords=electrode_coords,
+            spike_times_sec=np.array([], dtype=np.float32),
+            spike_labels=np.array([], dtype=np.int32),
+            sampling_frequency_hz=sampling_frequency
+        )
+    
+    # Extract spike frames
+    spike_frames_data = shifted_data[spike_frame_indices, :]
+    
+    print(f'Created spike frames movie with {len(spike_frame_indices)} frames')
+    
+    return MEASpikeFramesMovie(
+        spike_frames_data=spike_frames_data,
+        electrode_coords=electrode_coords,
+        spike_times_sec=spike_times_valid,
+        spike_labels=spike_labels_valid,
+        sampling_frequency_hz=sampling_frequency
+    )
 
 def generate_time_series_preview(
     *,

@@ -13,6 +13,15 @@ import {
   Paper,
   IconButton,
   Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  Checkbox,
 } from '@mui/material';
 import {
   CheckCircle as CheckIcon,
@@ -22,6 +31,7 @@ import {
   NavigateNext as NavigateNextIcon,
   OpenInNew as OpenInNewIcon,
   ContentCopy as ContentCopyIcon,
+  Star as StarIcon,
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -37,6 +47,12 @@ export function FileDetailView() {
   const fetchFiles = useCallback(() => api.getFiles(), []);
   const fetchConfig = useCallback(() => api.getConfig(), []);
   const [copySnackbarOpen, setCopySnackbarOpen] = useState(false);
+  const [addUnitsDialogOpen, setAddUnitsDialogOpen] = useState(false);
+  const [availableUnits, setAvailableUnits] = useState<{ unit_id: number; num_spikes: number }[]>([]);
+  const [selectedUnitIds, setSelectedUnitIds] = useState<number[]>([]);
+  const [isLoadingUnits, setIsLoadingUnits] = useState(false);
+  const [isAddingUnits, setIsAddingUnits] = useState(false);
+  const [addUnitsSuccess, setAddUnitsSuccess] = useState(false);
 
   const {
     data: filesData,
@@ -84,6 +100,56 @@ export function FileDetailView() {
     } catch (err) {
       console.error('Failed to copy code:', err);
     }
+  };
+
+  const handleAddToFocusUnits = async () => {
+    if (!file) return;
+    
+    setIsLoadingUnits(true);
+    setAddUnitsDialogOpen(true);
+    
+    try {
+      const response = await api.getCoarseSortingUnits(file.filename);
+      setAvailableUnits(response.units);
+    } catch (err) {
+      console.error('Failed to load units:', err);
+      setAvailableUnits([]);
+    } finally {
+      setIsLoadingUnits(false);
+    }
+  };
+
+  const handleToggleUnit = (unitId: number) => {
+    setSelectedUnitIds(prev =>
+      prev.includes(unitId)
+        ? prev.filter(id => id !== unitId)
+        : [...prev, unitId]
+    );
+  };
+
+  const handleConfirmAddUnits = async () => {
+    if (!file || selectedUnitIds.length === 0) return;
+    
+    setIsAddingUnits(true);
+    try {
+      const units = selectedUnitIds.map(unit_id => ({
+        bin_filename: file.filename,
+        unit_id,
+      }));
+      await api.addFocusUnits(units);
+      setAddUnitsSuccess(true);
+      setAddUnitsDialogOpen(false);
+      setSelectedUnitIds([]);
+    } catch (err) {
+      console.error('Failed to add units:', err);
+    } finally {
+      setIsAddingUnits(false);
+    }
+  };
+
+  const handleCancelAddUnits = () => {
+    setAddUnitsDialogOpen(false);
+    setSelectedUnitIds([]);
   };
 
   if (filesLoading || configLoading) {
@@ -144,6 +210,26 @@ export function FileDetailView() {
       <Typography variant="h4" gutterBottom>
         {file.filename}
       </Typography>
+
+      {/* Add to Focus Units */}
+      {file.has_coarse_sorting && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6">
+                Focus Units
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<StarIcon />}
+                onClick={handleAddToFocusUnits}
+              >
+                Add to Focus Units
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
 
       {/* File Overview */}
       <Card sx={{ mb: 3 }}>
@@ -299,11 +385,64 @@ export function FileDetailView() {
         </CardContent>
       </Card>
 
+      {/* Add Units Dialog */}
+      <Dialog open={addUnitsDialogOpen} onClose={handleCancelAddUnits} maxWidth="sm" fullWidth>
+        <DialogTitle>Add Units to Focus Units</DialogTitle>
+        <DialogContent>
+          {isLoadingUnits ? (
+            <Box display="flex" justifyContent="center" p={3}>
+              <CircularProgress />
+            </Box>
+          ) : availableUnits.length === 0 ? (
+            <Alert severity="info">No units found in coarse sorting</Alert>
+          ) : (
+            <List>
+              {availableUnits.map(unit => (
+                <ListItem key={unit.unit_id} disablePadding>
+                  <ListItemButton onClick={() => handleToggleUnit(unit.unit_id)} dense>
+                    <Checkbox
+                      edge="start"
+                      checked={selectedUnitIds.includes(unit.unit_id)}
+                      tabIndex={-1}
+                      disableRipple
+                    />
+                    <ListItemText
+                      primary={`Unit ${unit.unit_id}`}
+                      secondary={`${unit.num_spikes.toLocaleString()} spikes`}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelAddUnits} disabled={isAddingUnits}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmAddUnits}
+            variant="contained"
+            disabled={isAddingUnits || selectedUnitIds.length === 0}
+          >
+            {isAddingUnits ? 'Adding...' : `Add ${selectedUnitIds.length} Unit${selectedUnitIds.length !== 1 ? 's' : ''}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar
         open={copySnackbarOpen}
         autoHideDuration={2000}
         onClose={() => setCopySnackbarOpen(false)}
         message="Code copied to clipboard"
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
+
+      <Snackbar
+        open={addUnitsSuccess}
+        autoHideDuration={3000}
+        onClose={() => setAddUnitsSuccess(false)}
+        message="Units added to focus units successfully"
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
     </Box>

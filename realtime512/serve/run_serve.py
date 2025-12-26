@@ -14,6 +14,14 @@ from .api_handlers import (
     get_stats_handler,
     get_preview_file_handler,
 )
+from .focus_units_handlers import (
+    get_focus_units_handler,
+    add_focus_units_handler,
+    update_focus_unit_handler,
+    delete_focus_unit_handler,
+    get_coarse_sorting_units_handler,
+    get_spike_train_for_focus_unit_handler,
+)
 
 def run_serve(host="0.0.0.0", port=5000):
     """Main entry point for realtime512 serve."""
@@ -46,6 +54,12 @@ def run_serve(host="0.0.0.0", port=5000):
     print("  GET /api/high_activity/<filename> - High activity intervals")
     print("  GET /api/stats/<filename> - Spike statistics")
     print("  GET /api/preview/<filename>/<filepath> - Preview files (with range support)")
+    print("  GET /api/focus_units - Get all focus units")
+    print("  POST /api/focus_units - Add new focus units")
+    print("  PUT /api/focus_units/<focus_unit_id> - Update focus unit notes")
+    print("  DELETE /api/focus_units/<focus_unit_id> - Delete focus unit")
+    print("  GET /api/coarse_sorting_units/<filename> - Get available units from coarse sorting")
+    print("  GET /api/focus_units/<focus_unit_id>/spike_train - Get spike train for focus unit")
     print("")
     
     # Create Flask app
@@ -100,6 +114,30 @@ def run_serve(host="0.0.0.0", port=5000):
     @app.route("/api/preview/<filename>/<path:filepath>", methods=["GET"])
     def get_preview_file(filename, filepath):
         return get_preview_file_handler(filename, filepath)
+    
+    @app.route("/api/focus_units", methods=["GET"])
+    def get_focus_units():
+        return get_focus_units_handler()
+    
+    @app.route("/api/focus_units", methods=["POST"])
+    def add_focus_units():
+        return add_focus_units_handler()
+    
+    @app.route("/api/focus_units/<focus_unit_id>", methods=["PUT"])
+    def update_focus_unit(focus_unit_id):
+        return update_focus_unit_handler(focus_unit_id)
+    
+    @app.route("/api/focus_units/<focus_unit_id>", methods=["DELETE"])
+    def delete_focus_unit(focus_unit_id):
+        return delete_focus_unit_handler(focus_unit_id)
+    
+    @app.route("/api/coarse_sorting_units/<filename>", methods=["GET"])
+    def get_coarse_sorting_units(filename):
+        return get_coarse_sorting_units_handler(filename)
+    
+    @app.route("/api/focus_units/<focus_unit_id>/spike_train", methods=["GET"])
+    def get_spike_train_for_focus_unit(focus_unit_id):
+        return get_spike_train_for_focus_unit_handler(focus_unit_id)
     
     # Run the server
     app.run(host=host, port=port, debug=False)

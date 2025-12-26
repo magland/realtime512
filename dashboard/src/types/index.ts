@@ -57,3 +57,52 @@ export interface BinaryDataResponse {
 }
 
 export type DataType = 'raw' | 'filt' | 'shifted';
+
+// Focus Units Types
+export interface MutualMatch {
+  bin_filename: string;
+  unit_id: number;
+  overall_score: number;
+}
+
+export interface FocusUnit {
+  focus_unit_id: string;
+  bin_filename: string;
+  unit_id: number;
+  notes: string;
+  spike_labels_hash: string;
+  mutual_matches?: MutualMatch[];
+}
+
+export interface FocusUnitsResponse {
+  focus_units: FocusUnit[];
+}
+
+export interface CoarseSortingUnit {
+  unit_id: number;
+  num_spikes: number;
+}
+
+export interface CoarseSortingUnitsResponse {
+  units: CoarseSortingUnit[];
+  spike_labels_hash: string;
+}
+
+// Spike Train Types
+export interface SpikeTrainSegment {
+  bin_filename: string;
+  unit_id: number | null;
+  start_time_offset: number;
+  end_time_offset: number;
+  num_spikes: number;
+  spike_times: number[];
+  is_focus_unit: boolean;
+  is_gap?: boolean;
+}
+
+export interface SpikeTrainResponse {
+  focus_unit_id: string;
+  total_spikes: number;
+  total_duration_sec: number;
+  segments: SpikeTrainSegment[];
+}

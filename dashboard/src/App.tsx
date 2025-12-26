@@ -5,6 +5,7 @@ import { AppLayout } from './components/Layout/AppLayout';
 import { OverviewView } from './components/Overview/OverviewView';
 import { FileExplorerView } from './components/FileExplorer/FileExplorerView';
 import { FileDetailView } from './components/FileExplorer/FileDetailView';
+import { FocusUnitsView } from './components/FocusUnits/FocusUnitsView';
 
 const theme = createTheme({
   palette: {
@@ -27,6 +28,7 @@ function App() {
           <Route path="/" element={<OverviewView />} />
           <Route path="/files" element={<FileExplorerView />} />
           <Route path="/files/:filename" element={<FileDetailView />} />
+          <Route path="/focus-units" element={<FocusUnitsView />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppLayout>

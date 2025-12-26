@@ -174,26 +174,35 @@ def compute_coarse_sorting(
     # Extract spike frames
     frames = shifted_data_low_activity[spike_inds, :].astype(np.float32)
     
-    # Find nearest neighbors
-    print(f'Finding nearest neighbors for {frames.shape[0]} frames...')
-    nearest_neighbors = find_nearest_neighbors(frames, num_neighbors=num_nearest_neighbors)
+    # # Find nearest neighbors
+    # print(f'Finding nearest neighbors for {frames.shape[0]} frames...')
+    # nearest_neighbors = find_nearest_neighbors(frames, num_neighbors=num_nearest_neighbors)
     
-    # Non-local means averaging of nearest neighbors (denoising)
-    print(f'Denoising frames...')
-    # Q: Should we use mean or median here?
-    denoised_frames = np.median(frames[nearest_neighbors], axis=1)
+    # # Non-local means averaging of nearest neighbors (denoising)
+    # print(f'Denoising frames...')
+    # # Q: Should we use mean or median here?
+    # denoised_frames = np.median(frames[nearest_neighbors], axis=1)
     
-    # Cluster denoised frames
-    n_clusters = min(num_clusters, len(denoised_frames))
-    print(f'Clustering into {n_clusters} clusters...')
-    labels = cluster_kmeans(denoised_frames, num_clusters=n_clusters)
+    # # Cluster denoised frames
+    # n_clusters = min(num_clusters, len(denoised_frames))
+    # print(f'Clustering into {n_clusters} clusters...')
+    # labels = cluster_kmeans(denoised_frames, num_clusters=n_clusters)
+    # num_clusters_found = np.max(labels)
+
+    from isosplit import isosplit
+    labels = isosplit(
+        frames.astype(np.float32),
+        initial_k=300,
+        separation_threshold=3,
+        use_lda_for_merge_test=False
+    )
     num_clusters_found = np.max(labels)
     
     # Compute cluster templates
     templates = np.zeros((num_clusters_found, num_channels), dtype=np.float32)
     for k in range(1, num_clusters_found + 1):
         # Should we use mean or median here?
-        templates[k - 1, :] = np.median(denoised_frames[labels == k, :], axis=0)
+        templates[k - 1, :] = np.median(frames[labels == k, :], axis=0)
     
     # Sort templates by peak channel x-coordinate
     template_x_coords = compute_template_peak_channel_x_coordinate(templates, np.array(electrode_coords))
@@ -209,7 +218,7 @@ def compute_coarse_sorting(
     spike_labels = old_to_new[labels].astype(np.int32)
     
     # Compute spike amplitudes from denoised frames (negative of minimum value across channels)
-    spike_amplitudes = -np.min(denoised_frames, axis=1).astype(np.float32)
+    spike_amplitudes = -np.min(frames, axis=1).astype(np.float32)
     
     # Return results
     spike_times = spike_inds.astype(np.float32) / sampling_frequency_hz  # in seconds
