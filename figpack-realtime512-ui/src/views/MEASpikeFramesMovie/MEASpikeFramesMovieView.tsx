@@ -26,7 +26,9 @@ const MEASpikeFramesMovieView: React.FC<Props> = ({ zarrGroup, width, height }) 
 
   // Get unit selection context
   const unitSelectionContext = useContext(UnitSelectionContext);
-  const selectedUnitIds = unitSelectionContext?.unitSelection?.selectedUnitIds || new Set<string | number>();
+  const selectedUnitIds = useMemo(() => {
+    return unitSelectionContext?.unitSelection?.selectedUnitIds || new Set<string | number>()
+  }, [unitSelectionContext]);
 
   // Constants for layout
   const controlHeight = 140;

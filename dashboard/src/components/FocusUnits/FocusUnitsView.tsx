@@ -24,7 +24,6 @@ import {
   Button,
   Chip,
   Stack,
-  Divider,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
