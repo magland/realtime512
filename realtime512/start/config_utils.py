@@ -40,6 +40,13 @@ def create_config_file():
             default_config['raw_chunk_duration_sec'] = 10.0
         else:
             default_config['raw_chunk_duration_sec'] = float(raw_chunk)
+        
+        # Ask about bin2py mode
+        use_bin2py = input("Use bin2py format for acquisition folders? (y/n) [default: n]: ")
+        if use_bin2py.strip().lower() == 'y':
+            default_config['bin2py'] = True
+        else:
+            default_config['bin2py'] = False
     else:
         default_config['use_acquisition_folder'] = False
 

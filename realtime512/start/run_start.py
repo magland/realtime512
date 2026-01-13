@@ -5,7 +5,7 @@ import time
 from .build_utils import build_ui_components, BuildError
 from .config_utils import check_or_create_config, load_and_validate_config
 from .file_setup import download_simulated_data, load_electrode_coords, setup_directories
-from .acquisition_processor import AcquisitionProcessor
+from .acquisition_processor import AcquisitionProcessor, Bin2PyAcquisitionProcessor
 
 def run_start():
     """Main entry point for realtime512 processing."""
@@ -55,6 +55,7 @@ def run_start():
     course_sorting_detect_threshold = config.get('coarse_sorting_detect_threshold')
     use_acquisition_folder = config.get('use_acquisition_folder', False)
     raw_chunk_duration_sec = config.get('raw_chunk_duration_sec', 10.0)
+    use_bin2py = config.get('bin2py', False)
 
     # Download simulated data if configured
     download_simulated_data(use_acquisition_folder)
@@ -70,23 +71,41 @@ def run_start():
     # Create acquisition processor if using acquisition folder
     acquisition_processor = None
     if use_acquisition_folder:
-        acquisition_processor = AcquisitionProcessor(
-            acquisition_dir=acquisition_dir,
-            raw_dir=raw_dir,
-            computed_dir=computed_dir,
-            n_channels=n_channels,
-            sampling_frequency=sampling_frequency,
-            chunk_duration_sec=raw_chunk_duration_sec
-        )
-        print(f"Acquisition mode enabled: rechunking to {raw_chunk_duration_sec}s chunks")
+        if use_bin2py:
+            acquisition_processor = Bin2PyAcquisitionProcessor(
+                acquisition_dir=acquisition_dir,
+                raw_dir=raw_dir,
+                computed_dir=computed_dir,
+                n_channels=n_channels,
+                sampling_frequency=sampling_frequency,
+                chunk_duration_sec=raw_chunk_duration_sec
+            )
+            print(f"Acquisition mode enabled (bin2py): rechunking to {raw_chunk_duration_sec}s chunks")
+        else:
+            acquisition_processor = AcquisitionProcessor(
+                acquisition_dir=acquisition_dir,
+                raw_dir=raw_dir,
+                computed_dir=computed_dir,
+                n_channels=n_channels,
+                sampling_frequency=sampling_frequency,
+                chunk_duration_sec=raw_chunk_duration_sec
+            )
+            print(f"Acquisition mode enabled: rechunking to {raw_chunk_duration_sec}s chunks")
 
-    # Wait for at least one file of type .bin to appear
+    # Wait for data to appear
     wait_dir = acquisition_dir if use_acquisition_folder else raw_dir
     wait_dir_name = "acquisition" if use_acquisition_folder else "raw"
     while True:
-        if any(fname.endswith(".bin") for fname in os.listdir(wait_dir)):
-            break
-        print(f"Waiting for .bin file to appear in {wait_dir_name}/ directory...")
+        if use_acquisition_folder and use_bin2py:
+            # For bin2py mode, wait for folders (not .bin files)
+            dirs = [fname for fname in os.listdir(wait_dir) if os.path.isdir(os.path.join(wait_dir, fname))]
+            if len(dirs) > 0:
+                break
+            print(f"Waiting for bin2py folder to appear in {wait_dir_name}/ directory...")
+        else:
+            if any(fname.endswith(".bin") for fname in os.listdir(wait_dir)):
+                break
+            print(f"Waiting for .bin file to appear in {wait_dir_name}/ directory...")
         time.sleep(5)
     
     # Main processing loop

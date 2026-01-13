@@ -61,6 +61,8 @@ Once configured with `realtime512.yaml` and `electrode_coords.txt` in place, the
 
 **Acquisition Mode (recommended):** When configured with `use_acquisition_folder: true`, the system monitors the `acquisition/` directory for incoming data files from your acquisition system. These variable-sized chunks are automatically rechunked into fixed-duration files in `raw/` (configured via `raw_chunk_duration_sec`) before processing.
 
+**Bin2py Acquisition Mode:** When configured with both `use_acquisition_folder: true` and `bin2py: true`, the system monitors the `acquisition/` directory for folders (not files) that can be read using the bin2py library. Each folder is rechunked into fixed-duration `.bin` files in `raw/` with naming like `foldername_001.bin`, `foldername_002.bin`, etc. **Note:** For bin2py mode, you must have the `bin2py` package installed in your Python environment.
+
 **Direct Mode:** When `use_acquisition_folder: false`, the system monitors the `raw/` directory directly for `.bin` files and processes them automatically.
 
 ### 3. Start the API Server
@@ -121,6 +123,7 @@ n_channels: 512
 # Acquisition mode (recommended)
 use_acquisition_folder: true   # Enable acquisition rechunking
 raw_chunk_duration_sec: 10     # Duration in seconds for each processed chunk
+bin2py: false                  # Set to true for bin2py folder format
 
 # Filter settings
 filter_params:
@@ -143,10 +146,11 @@ my_experiment/
 ├── realtime512.yaml          # Configuration
 ├── electrode_coords.txt      # Electrode coordinates
 ├── acquisition/              # Incoming data from acquisition system
-│   ├── chunk_0001.bin       # Variable-sized chunks
-│   └── ...
+│   ├── chunk_0001.bin       # Variable-sized chunks (standard mode)
+│   └── ...                   # Or folders (bin2py mode)
 ├── raw/                      # Fixed-duration rechunked files
-│   ├── raw_0001.bin         # 10-second chunks (or as configured)
+│   ├── raw_0001.bin         # Standard mode: raw_NNNN.bin
+│   ├── data0001_001.bin     # Bin2py mode: foldername_NNN.bin
 │   └── ...
 ├── computed/                 # Processed outputs
 │   ├── filt/                # Filtered data
