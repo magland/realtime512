@@ -2,6 +2,7 @@ from scipy.signal import butter
 import numpy as np
 from multiprocessing import Pool, cpu_count
 from scipy.signal import sosfiltfilt
+from .vision_raw import load_raw_bin_file
 
 
 def _filter_channel_batch(args):
@@ -17,8 +18,7 @@ def apply_bandpass_filter(input_path, output_path, num_channels, lowcust, highcu
         return sos
 
     # Read raw data
-    data = np.fromfile(input_path, dtype=np.int16)
-    data = data.reshape(-1, num_channels)
+    data = load_raw_bin_file(input_path, num_channels)
 
     # Design filter
     sos = butter_bandpass(lowcust, highcut, fs, order=order)

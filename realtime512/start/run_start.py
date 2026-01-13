@@ -84,7 +84,9 @@ def run_start():
     wait_dir = acquisition_dir if use_acquisition_folder else raw_dir
     wait_dir_name = "acquisition" if use_acquisition_folder else "raw"
     while True:
-        if any(fname.endswith(".bin") for fname in os.listdir(wait_dir)):
+        # if any(fname.endswith(".bin") for fname in os.listdir(wait_dir)):
+            # break
+        if len(os.listdir(wait_dir)) > 0:
             break
         print(f"Waiting for .bin file to appear in {wait_dir_name}/ directory...")
         time.sleep(5)
@@ -99,7 +101,7 @@ def run_start():
 
         # Get list of all .bin files in raw/
         bin_files = [
-            fname for fname in os.listdir(raw_dir) if fname.endswith(".bin")
+            fname for fname in os.listdir(raw_dir) #if fname.endswith(".bin")
         ]
         # reverse the order so that newer files are processed first
         bin_files.sort(reverse=True)
