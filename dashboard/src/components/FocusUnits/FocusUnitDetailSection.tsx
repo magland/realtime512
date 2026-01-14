@@ -202,45 +202,6 @@ export function FocusUnitDetailSection({ focusUnit }: FocusUnitDetailSectionProp
               </Grid>
             </Grid>
 
-            {/* Segment Timeline */}
-            <Paper sx={{ p: 2, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Recording Segments
-              </Typography>
-              <Stack spacing={1}>
-                {spikeTrainData.segments.map((segment, idx) => (
-                  <Box
-                    key={idx}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      p: 1,
-                      bgcolor: segment.is_gap ? 'grey.100' : segment.is_focus_unit ? 'primary.50' : 'secondary.50',
-                      borderRadius: 1,
-                    }}
-                  >
-                    <Chip
-                      label={segment.bin_filename}
-                      size="small"
-                      color={segment.is_focus_unit ? 'primary' : 'default'}
-                    />
-                    {segment.is_gap ? (
-                      <Chip label="No Match" size="small" color="default" variant="outlined" />
-                    ) : (
-                      <Chip label={`Unit ${segment.unit_id}`} size="small" />
-                    )}
-                    <Typography variant="body2" sx={{ ml: 'auto' }}>
-                      {segment.start_time_offset.toFixed(1)}s - {segment.end_time_offset.toFixed(1)}s
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      ({(segment.end_time_offset - segment.start_time_offset).toFixed(1)}s, {segment.num_spikes.toLocaleString()} spikes)
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </Paper>
-
             {/* Firing Rate Plot */}
             <Paper sx={{ p: 2, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
@@ -366,6 +327,49 @@ export function FocusUnitDetailSection({ focusUnit }: FocusUnitDetailSectionProp
                 </BarChart>
               </ResponsiveContainer>
             </Paper>
+
+            {/* Recording Segments - Collapsed by default */}
+            <Accordion defaultExpanded={false} sx={{ mt: 3 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">
+                  Recording Segments
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  {spikeTrainData.segments.map((segment, idx) => (
+                    <Box
+                      key={idx}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        p: 1,
+                        bgcolor: segment.is_gap ? 'grey.100' : segment.is_focus_unit ? 'primary.50' : 'secondary.50',
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Chip
+                        label={segment.bin_filename}
+                        size="small"
+                        color={segment.is_focus_unit ? 'primary' : 'default'}
+                      />
+                      {segment.is_gap ? (
+                        <Chip label="No Match" size="small" color="default" variant="outlined" />
+                      ) : (
+                        <Chip label={`Unit ${segment.unit_id}`} size="small" />
+                      )}
+                      <Typography variant="body2" sx={{ ml: 'auto' }}>
+                        {segment.start_time_offset.toFixed(1)}s - {segment.end_time_offset.toFixed(1)}s
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        ({(segment.end_time_offset - segment.start_time_offset).toFixed(1)}s, {segment.num_spikes.toLocaleString()} spikes)
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
           </Box>
         )}
       </AccordionDetails>
