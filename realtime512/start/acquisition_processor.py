@@ -389,7 +389,7 @@ class Bin2PyAcquisitionProcessor:
                 
                 # Preallocate array (excluding channel 0 which is TTL)
                 # bin2py has n_electrodes channels, channel 0 is TTL, rest are data
-                data = np.zeros((num_frames, n_electrodes - 1), dtype=np.float32)
+                data = np.zeros((num_frames, n_electrodes), dtype=np.float32)
                 
                 # Read data in chunks
                 data_offset = 0
